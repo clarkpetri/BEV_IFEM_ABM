@@ -8,4 +8,4 @@ This repository contains the basic data files and code for the BEV adoption ABM 
 - Pandas 1.4.1
 
 ## Data and Model Files Structure
-repo-name/ │ ├── README.md ├── requirements.txt ├── data/ │ ├── fpop_final.pkl │ ├── time_series_data.pkl │ └── other_data_files.pkl └── Model/ ├── run.py # For visualizing the model with MESA's GUI ├── server.py # Supports the GUI visualization └── model.py # Contains the core model code
+The folder 'ABM' contains the necessary data files. Within 'ABM' is a folder 'model' with the python files. Explainations of these items are:
