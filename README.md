@@ -14,11 +14,9 @@ The folder 'files' contains the necessary data files. Within 'files' is a folder
    * [x_df.pkl](./files/x_df.pkl) .pkl file of a pandas dataframe with the quantified IFEM scores
    * [time_series_data.pkl](./files/time_series_data.pkl) .pkl file of the time-series inputs to the model (prices, news, and target registration percents)
    * [fpop_final.pkl](./files/fpop_final.pkl) The full synthetic population for loading into the model
-   * [fpop_connections_dict.pkl](./files/fpop_connections_dict.pkl) For connection dictionary for social networks among population
-   * [fpop_reverse_connections_dict.pkl](./files/fpop_reverse_connections_dict.pkl)
- * [dir1](./dir1)
-   * [file11.ext](./dir1/file11.ext)
-   * [file12.ext](./dir1/file12.ext)
- * [file_in_root.ext](./file_in_root.ext)
- * [README.md](./README.md)
- * [dir3](./dir3)
+   * [fpop_connections_dict.pkl](./files/fpop_connections_dict.pkl) Forward connection dictionary for social networks among population
+   * [fpop_reverse_connections_dict.pkl](./files/fpop_reverse_connections_dict.pkl) Reverse connection dictionary for social networks among population
+   * [model](./files/model)
+     * [run.py](./files/model/run.py) Initiates GUI of MESA model
+     * [server.py](./files/model/server.py) Supports GUI initiation of model
+     * [model.py](./files/model/model.py) Contains the model. Run from terminal for batch runs and improved computational efficiency
