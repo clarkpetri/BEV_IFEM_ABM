@@ -10,9 +10,6 @@ This repository contains the basic data files and code for the BEV adoption ABM 
 ## Data and Model Files Structure
 The folder 'ABM' contains the necessary data files. Within 'ABM' is a folder 'model' with the python files. Explainations of these items are:
 
-# Project tree
-
-.
  * [tree-md](./tree-md)
  * [dir2](./dir2)
    * [file21.ext](./dir2/file21.ext)
