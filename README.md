@@ -20,3 +20,5 @@ The folder 'files' contains the necessary data files. Within 'files' is a folder
      * [run.py](./files/model/run.py) Initiates GUI of MESA model
      * [server.py](./files/model/server.py) Supports GUI initiation of model
      * [model.py](./files/model/model.py) Contains the model. Run from terminal for batch runs and improved computational efficiency
+    
+Note: The fpop files are too large for GitHub. Contact me for access.
