@@ -8,11 +8,10 @@ This repository contains the basic data files and code for the BEV adoption ABM 
 - Pandas 1.4.1
 
 ## Data and Model Files Structure
-The folder 'ABM' contains the necessary data files. Within 'ABM' is a folder 'model' with the python files. Explainations of these items are:
+The folder 'ABM' contains the necessary data files. Within 'files' is a folder 'model' containg the python files. Explainations of these items are:
 
- * [tree-md](./tree-md)
- * [dir2](./dir2)
-   * [file21.ext](./dir2/file21.ext)
+ * [files](./files)
+   * [x_df.pkl](./files/x_df.pkl) .pkl file of a pandas dataframe with the quantified IFEM scores
    * [file22.ext](./dir2/file22.ext)
    * [file23.ext](./dir2/file23.ext)
  * [dir1](./dir1)
