@@ -17,7 +17,7 @@ The folder 'files' contains the necessary data files. Within 'files' is a folder
    * [fpop_connections_dict.pkl](./files/fpop_connections_dict.pkl) Forward connection dictionary for social networks among population
    * [fpop_reverse_connections_dict.pkl](./files/fpop_reverse_connections_dict.pkl) Reverse connection dictionary for social networks among population
    * [model](./files/model)
-     * [run.py](./files/model/run.py) Initiates GUI of MESA model
+     * [run.py](./files/model/run.py) Initiates GUI of model
      * [server.py](./files/model/server.py) Supports GUI initiation of model
      * [model.py](./files/model/model.py) Contains the model. Run from terminal for batch runs and improved computational efficiency
     
