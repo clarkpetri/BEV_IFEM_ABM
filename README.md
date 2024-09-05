@@ -21,4 +21,4 @@ The folder 'files' contains the necessary data files. Within 'files' is a folder
      * [server.py](./files/model/server.py) Supports GUI initiation of model
      * [model.py](./files/model/model.py) Contains the model. Run from terminal for batch runs and improved computational efficiency
     
-Note: The fpop files are too large for GitHub. Contact me for access.
+Note: The fpop_final.pkl, fpop_connections_dict.pkl, and fpop_reverse_connections_dict.pkl files are too large for GitHub. The ones uploaded here are truncated ones for testing. Contact me for access to the full files.
