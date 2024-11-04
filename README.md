@@ -20,6 +20,7 @@ The folder 'files' contains the necessary data files. Within 'files' is a folder
      * [run.py](./files/model/run.py) Initiates GUI of model
      * [server.py](./files/model/server.py) Supports GUI initiation of model
      * [model.py](./files/model/model.py) Contains the model. Run from terminal for batch runs and improved computational efficiency
+     * [model-precision.ipynb](./files/model/model-precision.ipynb) Jupyter notebook for analyzing model BEV adoption against historical
     
 Note 1: The fpop_final.pkl, fpop_connections_dict.pkl, and fpop_reverse_connections_dict.pkl files are too large for GitHub. The ones uploaded here are smaller example files. Contact me for access to the full files.
 
