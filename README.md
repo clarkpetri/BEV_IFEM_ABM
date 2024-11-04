@@ -4,7 +4,7 @@ This repository contains the basic data files and code for the BEV adoption ABM 
 ## Requirements
 
 - Python 3.10.2
-- MESA 2.1.2
+- MESA 2.4.0
 - Pandas 1.4.1
 
 ## Data and Model Files Structure
