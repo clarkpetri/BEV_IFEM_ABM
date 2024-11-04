@@ -8,14 +8,14 @@ import os
 from datetime import datetime
 
 sample = True
-car_age_data = True # Output car age data files
-agent_data = True # Output agent BEV adoption data
+agent_data = False # Output agent BEV adoption data
 start_tick = 65
 now = datetime.now()
 date_time = now.strftime("%b %d %H%M")
-dir_name = 'Output data/test'
-#dir_name = 'Output Data/03 - Optimized Params 90k 8it/'
-#dir_name = f'Output Data/{date_time} 30x30 re-run of Jun 21 0919 40k 8it/'
+#dir_name = 'Output data/03 - Optimized Params 82x82 full pop 8it'
+#dir_name = 'Output Data/01 - Baseline all 1.0 params 90k 8it/'
+#dir_name = f'Output Data/{date_time} 30x30 3.9 param sweep 90k 1it/'
+dir_name = 'Output data/04 - eh_var sensitivity'
 
 # Intended Data Structure #
 # model/
@@ -53,7 +53,7 @@ with open(fpop_reverse_connections_path, 'rb') as f:
     reverse_connections_dict = pickle.load(f)
 
 if sample == True:
-    n = 1000  # Set the number of rows to iterate over
+    n = 90000  # Set the number of rows to iterate over
     # Get n random rows from the DataFrame
     sample = census_df.sample(n)
 else:
@@ -64,53 +64,18 @@ census_sorted = sample.sort_values(by=['hhold', 'htype'])
 # Group the dataframe by 'hhold' and 'htype'
 grouped_census = census_sorted.groupby(['hhold', 'htype'])
 
-# Population initiation of car ages
-# Without classic cars
-percents_2009 = [0.0616, 0.076, 0.0776, 0.079, 0.0772, 0.0728, 0.0758, 0.0674, 0.075, 0.0585, 0.0556, 0.0457,
-            0.0376, 0.0369, 0.0298, 0.0223, 0.0206, 0.0172, 0.0134]
-
 annual_replacement_percents = [0.0409, 0.0462, 0.0503, 0.0569, 0.0607, 0.0632, 0.0660, 0.0650, 0.0629, 0.0627, 
                                0.0623, 0.0615, 0.0513, 0.0485] # 2009 - 2022
 
 charger_estimate = [1, 1, 7, 19, 25, 32, 43, 53, 60, 72, 83, 99, 157, 181, 217] # 2009 - 2023 based on Fairfax Population
 
 years = list(range(20))
-year_bins = years[1:]
-
-# Define logistic function
-def logistic(x, L, k, x0):
-    return L / (1 + np.exp(-k*(x-x0)))
-
-def update_car_ages_distribution(car_ages_distribution, year):
-    
-    L, k, x0 = 1, 2.98, 5.75 # 2009-2022
-        
-    # Generate probabilities using the logistic function
-    ages = np.arange(1, 20)
-    probabilities = logistic(ages, L, k, x0)
-    probabilities /= np.sum(probabilities)  # Normalize probabilities
-    
-    # Ensure there are no negative counts
-    car_ages_distribution = np.maximum(car_ages_distribution, 0)
-    
-    # Draw a year from logistic
-    drawn_year = np.random.choice(ages, p=probabilities)
-    
-    # Ensure drawn year is within the range of available ages
-    drawn_year = max(0, min(drawn_year, len(car_ages_distribution) - 1))
-    
-    # Update the distribution
-    car_ages_distribution[drawn_year] -= 1  # Decrement the drawn year
-    
-    car_ages_distribution[0] += 1  # Increment year 1 by 1
- 
-    return car_ages_distribution, drawn_year
 
 class Consumer(mesa.Agent):
     """
     Possible EV consumer agent
     """
-    def __init__(self, pos, model, agent_type, age, charge_inf, education, experience, hh_size, housing, htype, income, kids, local_inf, ownership_length, politics, sex, shopping, social_inf, weighted_sum):
+    def __init__(self, pos, model, agent_type, age, charge_inf, education, experience, hh_size, housing, htype, income, kids, local_inf, politics, sex, shopping, social_inf, weighted_sum):
         """
         Create a new Consumer agent.
         """
@@ -127,7 +92,6 @@ class Consumer(mesa.Agent):
         self.income = income
         self.kids = kids
         self.local_inf = local_inf
-        self.ownership_length = ownership_length
         self.politics = politics
         self.sex = sex
         self.shopping = shopping
@@ -151,7 +115,7 @@ class Consumer(mesa.Agent):
         tr_value = self.charge_inf * x_df.at[0,'translation']
         si_value = (self.local_inf + self.social_inf) * x_df.at[0,'social_influence']
         is_value = self.education * x_df.at[0,'identity_symbolism']
-        en_value = (pol + time_df.iloc[self.model.tick - start_tick,5]) * x_df.at[0,'enrollment'] # time_df 5 is smoothed news
+        en_value = (pol + time_df.iloc[self.model.tick - start_tick,8]) * x_df.at[0,'enrollment'] # time_df 8 is smoothed_norm news
         fc_value = (self.charge_inf + h) * x_df.at[0,'facilitating_conditions'] #
         pr_value = ((self.age/100) + g + self.income + time_df.iloc[self.model.tick - start_tick,6]) * x_df.at[0,'price_value'] # time_df 6 is price history
         eh_value = self.experience * x_df.at[0,'experience_and_habit']
@@ -172,7 +136,12 @@ class Consumer(mesa.Agent):
 
     def step(self):
 
-        if self.model.tick >= start_tick: # Begin agent behavior with burn-in complete (commencing May 2014)
+        # Calculate BEV experience
+        if self.type == 'bev_owner':
+            if self.experience <= 0.9: # Upper limit for testing
+                self.experience += 0.1
+
+        if self.shopping == True: # Begin agent behavior with burn-in complete (commencing May 2014)
 
             # Social network influence calculation
             self.social_inf = 0  
@@ -200,11 +169,6 @@ class Consumer(mesa.Agent):
                 if self.local_inf > 3:
                     self.local_inf = 3 # Don't let it grow ridiculously in multigrid
 
-            # Calculate BEV experience
-            if self.type == 'bev_owner':
-                if self.experience <= 0.9: # Upper limit for testing
-                    self.experience += 0.1
-
             # Charger proximity influence
             if self.charge_inf < 3.0:
                 for neighbor in self.model.grid.iter_neighbors(self.pos, True, radius=2):
@@ -213,18 +177,15 @@ class Consumer(mesa.Agent):
 
             self.weighted_sum = self.threshold_function(x_df)
 
-            if self.shopping == True: # Is the agent shopping
-                # Determine if new car is BEV
-                if self.weighted_sum >= self.model.bev_thresh and self.type != 'bev_owner':
-                    self.type = 'bev_owner'
-                    self.model.bevs += 1
-                if self.weighted_sum < self.model.bev_thresh and self.type == 'bev_owner':
-                    self.type = 'non_bev_owner'
-                    self.model.bevs -= 1
+            # Determine if new car is BEV
+            if self.weighted_sum >= self.model.bev_thresh and self.type != 'bev_owner':
+                self.type = 'bev_owner'
+                self.model.bevs += 1
+            if self.weighted_sum < self.model.bev_thresh and self.type == 'bev_owner':
+                self.type = 'non_bev_owner'
+                self.model.bevs -= 1
 
-                self.shopping = False # Regardless of purchase type, no longer shopping
-
-                self.model.thresh_hold.append(self.weighted_sum)
+            self.shopping = False # Regardless of purchase type, no longer shopping
 
 class ChargingAgent(mesa.Agent):
     """
@@ -256,14 +217,13 @@ class FairfaxABM(mesa.Model):
     Model class for the BEV adoption model.
     """
     
-    def __init__(self, width=30, height=30, age_array=None, rand_or_gis=0.0, bev_thresh=1, total_agents=0, bevs=0, bev_target=0, 
+    def __init__(self, width=30, height=30, rand_or_gis=0.0, bev_thresh=1, total_agents=0, bevs=0, bev_target=0, 
         tick=1, loaded_ids=[], charge_count=0, on_chargers=0, pe_var=1, dp_var=1, tr_var=1, si_var=1, is_var=1, en_var=1, fc_var=1,
-        pr_var=1, eh_var=1, thresh_hold=[], average_tf=0, agent_df=None):
+        pr_var=1, eh_var=1, agent_df=None):
         """ """
         
         self.width = width
         self.height = height
-        self.age_array = age_array
         self.rand_or_gis = rand_or_gis
         self.bev_thresh = bev_thresh
         self.total_agents = total_agents
@@ -285,10 +245,7 @@ class FairfaxABM(mesa.Model):
         self.ifem_pr_var = pr_var
         self.ifem_eh_var = eh_var
 
-        self.thresh_hold = thresh_hold
-        self.average_tf = average_tf
-
-        self.agent_df = pd.DataFrame(columns=['step', 'unique_id', 'type', 'age', 'charge_inf', 'education', 'experience', 'hh_size', 'housing', 'htype', 'income', 'kids', 'local_inf', 'ownership_length', 'politics', 'sex', 'shopping', 'social_inf', 'weighted_sum'])
+        self.agent_df = pd.DataFrame(columns=['step', 'unique_id', 'type', 'age', 'charge_inf', 'education', 'experience', 'hh_size', 'housing', 'htype', 'income', 'kids', 'local_inf', 'politics', 'sex', 'shopping', 'social_inf', 'weighted_sum'])
 
         self.schedule = mesa.time.RandomActivation(self)
         self.grid = mesa.space.MultiGrid(width, height, torus=False)
@@ -296,8 +253,7 @@ class FairfaxABM(mesa.Model):
         self.datacollector = mesa.DataCollector(
             {"bevs": "bevs",  # Model-level count of BEV owners
             "bev_target": "bev_target",
-            "on_chargers": "on_chargers",
-            "average_tf": "average_tf",},)
+            "on_chargers": "on_chargers",},)
             # For testing purposes, agent's individual x and y, expands df size substantially (7k to 96mb for 10k run)
             #{"bev_owner": lambda a: a.type},)#, "age": lambda a: a.age},)
 
@@ -332,11 +288,6 @@ class FairfaxABM(mesa.Model):
                 # Ensure the coordinates are within bounds
                 x = max(0, min(x, self.grid.width - 1))
                 y = max(0, min(y, self.grid.height - 1))
-            
-            # Set ownership and replacement ages
-            #a = np.random.choice(years, p=percentages)
-            #ownership_length = np.random.randint(bins[a][0],bins[a][1])
-            ownership_length = np.random.choice(year_bins, p=percents_2009)
 
             agent_type = 'non_bev_owner'
 
@@ -348,9 +299,9 @@ class FairfaxABM(mesa.Model):
 
             self.total_agents += 1
 
-            weighted_sum = 0 # Initially give all agents a 0. Likely tailored to their specific demographics at model start
+            weighted_sum = 0 # Initially give all agents a 0
 
-            agent = Consumer((unique_id), self, agent_type, age, charge_inf, education, experience, hh_size, housing, htype, income, kids, local_inf, ownership_length, politics, sex, shopping, social_inf, weighted_sum) # Needed for multigrid but should lilely stay regardless for individual agent tracking
+            agent = Consumer((unique_id), self, agent_type, age, charge_inf, education, experience, hh_size, housing, htype, income, kids, local_inf, politics, sex, shopping, social_inf, weighted_sum) # Needed for multigrid but should lilely stay regardless for individual agent tracking
             self.grid.place_agent(agent, (x, y))
             self.schedule.add(agent)
         
@@ -436,25 +387,6 @@ class FairfaxABM(mesa.Model):
 
         self.loaded_ids = loaded_agent_ids
 
-        # Build age array
-        vehicle_ages_2009 = []
-        for agent in self.schedule.agents:
-            if agent.type == 'bev_owner' or agent.type == 'non_bev_owner':
-                vehicle_ages_2009.append(agent.ownership_length)
-        vehicle_ages_2009.sort()
-
-        # Calculate the unique values and their counts
-        unique_ages, counts = np.unique(vehicle_ages_2009, return_counts=True)
-
-        # Find the minimum age
-        min_age = min(unique_ages)
-
-        # Create the histogram
-        car_ages_2009 = np.zeros(max(unique_ages) - min_age + 1, dtype=int)
-        car_ages_2009[unique_ages - min_age] = counts
-
-        self.age_array = car_ages_2009
-
         print('Total agents:',self.total_agents)
         self.running = True
         self.datacollector.collect(self)
@@ -464,83 +396,36 @@ class FairfaxABM(mesa.Model):
         Run one step of the model. If All agents are BEV owners, halt the model.
         """
 
-        ### Dump ages of vehicles for comparison at actual known years###  
-        if car_age_data == True:
+        # Adjust the BEV threshold over time to reduce exponential growth
 
-            l = []
-            threshold_scores = []
-            for a in self.schedule.agents:
-                if a.type == 'bev_owner' or a.type == 'non_bev_owner':
-                    l.append(a.ownership_length)
-                    threshold_scores.append(a.weighted_sum)
-
-            if self.tick == 1:
-                #file_path = "model-2009.pkl"
-                file_path = os.path.join(write_data_directory, 'model-2009.pkl')
-
-                with open(file_path, 'wb') as f:
-                    pickle.dump(l, f)
-
-            if self.tick == 96:
-                #file_path = "model-2017.pkl"
-                file_path = os.path.join(write_data_directory, 'model-2017.pkl')
-
-                with open(file_path, 'wb') as f:
-                    pickle.dump(l, f)
-
-            if self.tick == 156:
-                #file_path = "model-2022.pkl"
-                file_path = os.path.join(write_data_directory, 'model-2022.pkl')
-
-                with open(file_path, 'wb') as f:
-                    pickle.dump(l, f)
+        threshold_adjustment = 0.1*(np.log1p(self.tick) / 100)  # Or use a sigmoid as described above
+        self.bev_thresh += threshold_adjustment
 
         # For agent data capture
         step_data = []
 
         # Perform car age transformation
         year = (self.tick // 12)
-        
+
+        # Determine the number of agents to shop
         n = round((annual_replacement_percents[year] / 12) * self.total_agents)
-        
-        synthetic_2022 = self.age_array
 
-        if (self.tick - 1) % 12 == 0: # Need to roll ages initially (this was the problem)
-            
-            synthetic_2022 = np.roll(synthetic_2022, 1)
+        # Shuffle the list of agents and select the first `n` agents to shop
+        agents_to_shop = random.sample([a for a in self.schedule.agents if a.type in ['bev_owner', 'non_bev_owner']], n)
 
-        years_replaced = []
-        for _ in range(n):
-            synthetic_2022, replaced_year = update_car_ages_distribution(synthetic_2022, year)
-            years_replaced.append(replaced_year)
-        
-        synthetic_ages_2022 = []
-        s = 1
-        for i in synthetic_2022:
-            
-            for j in range(i):
-                synthetic_ages_2022.append(s)
-            s+=1
+        # Set the selected agents to shop
+        for a in agents_to_shop:
+            if self.tick >= start_tick:
+                a.shopping = True   
+
+        #for a in agents_to_shop[:5]:
+        #    print('Shopping agents:', a.unique_id)
 
         # Single agent schedule loop
-        for a in self.schedule.agents:
-
-            # Synthetic aging
-            if a.type == 'bev_owner' or a.type == 'non_bev_owner':
-                if years_replaced:
-                    if a.ownership_length in years_replaced:
-                        years_replaced.remove(a.ownership_length)
-                        if self.tick >= start_tick:
-                            a.shopping = True # This likely needs to be set for after the start tick
-
-                random_age = random.choice(synthetic_ages_2022)
-                a.ownership_length = random_age
-                # Remove the randomly chosen age from the list
-                synthetic_ages_2022.remove(random_age)
-
+        if agent_data == True:
 
             # Agent level data capture
-            if agent_data == True:
+            for a in self.schedule.agents:
 
                 if self.tick == 1:
                     if a.type != 'charger':
@@ -558,7 +443,6 @@ class FairfaxABM(mesa.Model):
                             'income': a.income,
                             'kids': a.kids,
                             'local_inf': a.local_inf,
-                            'ownership_length': a.ownership_length,
                             'politics': a.politics,
                             'sex': a.sex,
                             'shopping': a.shopping,
@@ -580,7 +464,6 @@ class FairfaxABM(mesa.Model):
                         'income': a.income,
                         'kids': a.kids,
                         'local_inf': a.local_inf,
-                        'ownership_length': a.ownership_length,
                         'politics': a.politics,
                         'sex': a.sex,
                         'shopping': a.shopping,
@@ -591,15 +474,6 @@ class FairfaxABM(mesa.Model):
         step_df = pd.DataFrame(step_data)
         self.agent_df = pd.concat([self.agent_df, step_df], ignore_index=True)
 
-        # Update car age array
-        self.age_array = synthetic_2022 
-
-        if len(self.thresh_hold) != 0:
-
-            average = sum(self.thresh_hold)/len(self.thresh_hold)
-            #print('Average threshold:',average)
-
-            self.average_tf = average
 
         ### OUTPUT CAPTURE AND DUMP FOR ANALYSIS ###
         
@@ -610,7 +484,6 @@ class FairfaxABM(mesa.Model):
 
             historic_percent = round((time_df.iloc[(self.tick - 49), 7]),6) # 7 is smoothed column # was 49
             self.bev_target = round((historic_percent * self.total_agents),0)
-            
 
             self.schedule.step()
             # collect data
@@ -632,17 +505,20 @@ class FairfaxABM(mesa.Model):
         self.tick+=1
 
 # Initial params
-#params = {"width": 30, "height": 30, "age_array": None, "rand_or_gis": [0.0], "bev_thresh": [3.75], "total_agents": [0], "tick": [1], 'loaded_ids': [[]], 'charge_count': [0], 'on_chargers': [0], 
+#params = {"width": 30, "height": 30, "rand_or_gis": [0.0], "bev_thresh": [3.5], "total_agents": [0], "tick": [1], 'loaded_ids': [[]], 'charge_count': [0], 'on_chargers': [0], 
 #    'pe_var': [1], 'dp_var': [1], 'tr_var': [1], 'si_var': [1], 'is_var': [1], 'en_var': [1], 'fc_var': [1], 'pr_var': [1], 'eh_var': [1]} 
 
 # Test params
-#params = {"width": 75, "height": 75, "age_array": None, "rand_or_gis": [0.0], "bev_thresh": [3.7], "total_agents": [0], "tick": [1], 'loaded_ids': [[]], 'charge_count': [0], 'on_chargers': [0], 
-#    'pe_var': [0.75], 'dp_var': [1.15], 'tr_var': [1.5], 'si_var': [0.75], 'is_var': [0.75], 'en_var': [1.25], 'fc_var': [0.75], 'pr_var': [0.75], 'eh_var': [1.15]} 
+#params = {"width": 30, "height": 30, "rand_or_gis": [0.0], "bev_thresh": [3.5], "total_agents": [0], "tick": [1], 'loaded_ids': [[]], 'charge_count': [0], 'on_chargers': [0], 
+#    'pe_var': [1.25], 'dp_var': [1.25], 'tr_var': [1.0], 'si_var': [0.5], 'is_var': [1.2], 'en_var': [.75], 'fc_var': [0.5], 'pr_var': [0.5], 'eh_var': [1.1]} 
 
-# Best params
-params = {"width": 86, "height": 86, "age_array": None, "rand_or_gis": [0.0], "bev_thresh": [3.85], "total_agents": [0], "tick": [1], 'loaded_ids': [[]], 'charge_count': [0], 'on_chargers': [0], 
-    'pe_var': [0.8], 'dp_var': [1.2], 'tr_var': [1.55], 'si_var': [0.85], 'is_var': [0.75], 'en_var': [1.30], 'fc_var': [0.75], 'pr_var': [0.85], 'eh_var': [1.10]} 
+# Sensitivity params
+params = {"width": 30, "height": 30, "rand_or_gis": [0.0], "bev_thresh": [3.5], "total_agents": [0], "tick": [1], 'loaded_ids': [[]], 'charge_count': [0], 'on_chargers': [0], 
+    'pe_var': [1.25], 'dp_var': [1.25], 'tr_var': [1.0], 'si_var': [0.5], 'is_var': [1.2], 'en_var': [.75], 'fc_var': [0.5], 'pr_var': [0.5], 'eh_var': [1.1]} 
 
+# Best Params
+#params = {"width": 30, "height": 30, "rand_or_gis": [0.0], "bev_thresh": [3.5], "total_agents": [0], "tick": [1], 'loaded_ids': [[]], 'charge_count': [0], 'on_chargers': [0], 
+ #   'pe_var': [1.25], 'dp_var': [1.25], 'tr_var': [1.0], 'si_var': [0.5], 'is_var': [1.2], 'en_var': [.75], 'fc_var': [0.5], 'pr_var': [0.5], 'eh_var': [1.1]} 
 
 if __name__ == "__main__":
 
@@ -659,7 +535,7 @@ if __name__ == "__main__":
 
     results_df = pd.DataFrame(results)
 
-    df = results_df.drop(['width', 'height', 'age_array', 'total_agents', 'tick', 'loaded_ids', 'charge_count'], axis=1)
+    df = results_df.drop(['width', 'height', 'total_agents', 'tick', 'loaded_ids', 'charge_count'], axis=1)
 
     csv_file_path = os.path.join(write_data_directory, 'FairfaxABM_Data.csv')
     df.to_csv(csv_file_path)
