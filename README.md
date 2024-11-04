@@ -4,7 +4,7 @@ This repository contains the basic data files and code for the BEV adoption ABM 
 ## Requirements
 
 - Python 3.10.2
-- MESA 2.4.0
+- MESA 2.1.2
 - Pandas 1.4.1
 
 ## Data and Model Files Structure
@@ -21,4 +21,7 @@ The folder 'files' contains the necessary data files. Within 'files' is a folder
      * [server.py](./files/model/server.py) Supports GUI initiation of model
      * [model.py](./files/model/model.py) Contains the model. Run from terminal for batch runs and improved computational efficiency
     
-Note: The fpop_final.pkl, fpop_connections_dict.pkl, and fpop_reverse_connections_dict.pkl files are too large for GitHub. The ones uploaded here are smaller example files. Contact me for access to the full files.
+Note 1: The fpop_final.pkl, fpop_connections_dict.pkl, and fpop_reverse_connections_dict.pkl files are too large for GitHub. The ones uploaded here are smaller example files. Contact me for access to the full files.
+
+Note 2: MESA 2.1.2 has a known bug with Random.Activation that was discovered late in model construction. Use of python's random module avoids this problem in the model.
+
